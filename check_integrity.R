@@ -1,5 +1,4 @@
 #Script en R para limpipar datos:
-
 cnames = c("CHR","SNP","BP","A1","A2","FREQ","BETA","SE","P")
 args <- commandArgs(trailingOnly=TRUE)
 gwas <- args[1]
@@ -52,18 +51,18 @@ if(!checkP) {
   # stop("P-value column should contain only numbers")
 }
 
-checkPBounds <- all(data$P <=1 & data$P >0)
+checkPBounds <- all(data$P <=1 & data$P >=0)
 if(!checkPBounds) {
   stop("P-value column should contain only numbers between 0 and 1 inclusive")
 }
-print(head(data))
 
-data<-data[order(data$P),]
+p<-order(data$CHR, data$BP)
 
-write.table(data[,cnames], file=out, quote=F, row.names=F, col.names=T, sep="\t")
+write.table(data[p,cnames], file=out, quote=F, row.names=F, col.names=T, sep="\t")
 
-inicio_scrp <- as.numeric(Sys.time())
 
+p<-order(data$P)
+data<-data[p,]
 
 chrm <- c('1','2','3','4','5','6','7','8','9','10','11','12','13','14','15',
           '16','17','18','19','20','21','22','X','Y')
@@ -72,13 +71,16 @@ chrm <- c('1','2','3','4','5','6','7','8','9','10','11','12','13','14','15',
 #          145138636,138394717,133797422,135086622,133275309,114364328,107043718,101991189,
 #          90338345,83257441,80373285,58617616,64444167,46709983,50818468,156040895,57227415))
 
-
 posc <- as.matrix(c(0,248956422,242193529,198295559,190214555,181538259,170805979,159345973,
           145138636,138394717,133797422,135086622,133275309,114364328,107043718,101991189,
           90338345,83257441,80373285,58617616,64444167,46709983,50818468,156040895))
 
-rownames(posc)<-chrm
+for(i in 2:length(posc)) {
+	posc[i]<-posc[i]+posc[i-1]
+}
 
+rownames(posc)<-chrm
+print(posc)
 data$manhattanPos <- data$BP + posc[as.character(data$CHR),1]
 
 xLen <- as.integer(xPx/factor_division)
@@ -86,16 +88,12 @@ yLen <- as.integer(yPx/factor_division)
 
 vMax <- -log10(min(data$P))
 vMin <- -log10(max(data$P))
-bpPerPixel_X = sum(posc[,1])/xLen
+bpPerPixel_X = posc[length(posc)]/xLen
 valuesPerPixel_y  = (vMax-vMin)/yLen
 
-data$mX <- round(data$manhattanPos/bpPerPixel_X)
-data$mY <- round(-log10(data$P)/valuesPerPixel_y)
+mX <- round(data$manhattanPos/bpPerPixel_X)
+mY <- round(-log10(data$P)/valuesPerPixel_y)
+mx_my <- paste(mX,mY)
+p<-which(!duplicated(mx_my))
 
-d2<-data[!duplicated(data[,c("mX","mY")]),]
-
-cnames <- c(cnames,'AbslPost')
-
-write.table(d2, file=paste0(out,".manhattan"), quote=F, row.names=F, col.names=T, sep="\t")
-
-print(as.numeric(Sys.time())-inicio_scrp)
+write.table(data[p,], file=paste0(out,".manhattan"), quote=F, row.names=F, col.names=T, sep="\t")
